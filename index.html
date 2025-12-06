@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VilloScreenPlay</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #1a1a1a;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            border-bottom: 2px solid #404040;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .clapperboard {
+            width: 50px;
+            height: 40px;
+            background: #2c2c2c;
+            border: 2px solid #808080;
+            border-radius: 3px;
+            position: relative;
+        }
+
+        .clapperboard::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: -2px;
+            right: -2px;
+            height: 12px;
+            background: repeating-linear-gradient(
+                45deg,
+                #808080,
+                #808080 8px,
+                #2c2c2c 8px,
+                #2c2c2c 16px
+            );
+            border: 2px solid #808080;
+            border-radius: 3px 3px 0 0;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #c0c0c0;
+            letter-spacing: 2px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .fixed-actions {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 200;
+        }
+
+        .fixed-actions button {
+            background: #404040;
+            color: #e0e0e0;
+            border: 1px solid #606060;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+
+        .fixed-actions button:hover {
+            background: #505050;
+            border-color: #808080;
+        }
+
+        button, select {
+            background: #404040;
+            color: #e0e0e0;
+            border: 1px solid #606060;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        button:hover, select:hover {
+            background: #505050;
+            border-color: #808080;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .container {
+            max-width: 8.5in;
+            margin: 30px auto;
+            background: white;
+            min-height: 11in;
+            padding: 1in 1in 1in 1.5in;
+            box-shadow: 0 0 20px rgba(0,0,0,0.7);
+            position: relative;
+        }
+
+        .page-number {
+            position: absolute;
+            top: 0.5in;
+            right: 1in;
+            font-size: 12pt;
+            color: black;
+        }
+
+        #editor {
+            font-family: 'Courier New', monospace;
+            font-size: 12pt;
+            line-height: 1;
+            color: black;
+            min-height: 9in;
+            outline: none;
+            white-space: pre-wrap;
+        }
+
+        .element-controls {
+            background: #2c2c2c;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 8.5in;
+            border-radius: 8px;
+            border: 1px solid #404040;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group label {
+            color: #c0c0c0;
+            font-size: 12px;
+            min-width: 80px;
+        }
+
+        .control-group input {
+            flex: 1;
+            min-width: 200px;
+            background: #404040;
+            color: #e0e0e0;
+            border: 1px solid #606060;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .slugline {
+            margin-top: 12pt;
+            margin-bottom: 12pt;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .action {
+            margin-bottom: 12pt;
+        }
+
+        .character {
+            margin-top: 12pt;
+            margin-left: 2.2in;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .parenthetical {
+            margin-left: 1.6in;
+            max-width: 1.4in;
+        }
+
+        .dialogue {
+            margin-left: 1.0in;
+            max-width: 4.0in;
+            margin-bottom: 12pt;
+        }
+
+        .transition {
+            margin-top: 12pt;
+            margin-bottom: 12pt;
+            text-align: right;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #2c2c2c;
+            padding: 30px;
+            border-radius: 8px;
+            border: 2px solid #606060;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-content h2 {
+            color: #c0c0c0;
+            margin-bottom: 20px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            margin-bottom: 15px;
+            background: #404040;
+            color: #e0e0e0;
+            border: 1px solid #606060;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .scene-number {
+            color: black;
+            font-weight: bold;
+        }
+
+        .scroll-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #404040;
+            color: #e0e0e0;
+            border: 2px solid #606060;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .scroll-to-top:hover {
+            background: #505050;
+            border-color: #808080;
+            transform: scale(1.1);
+        }
+
+        .scroll-to-top.show {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <div class="fixed-actions">
+        <button onclick="undo()">⟲ Deshacer</button>
+        <button onclick="redo()">⟳ Rehacer</button>
+    </div>
+
+    <div class="header">
+        <div class="logo-container">
+            <div class="clapperboard"></div>
+            <h1>VilloScreenPlay</h1>
+        </div>
+        <div class="toolbar">
+            <button onclick="showCoverModal()">📄 Crear Portada</button>
+            <button onclick="saveProject()">💾 Guardar Proyecto</button>
+            <button onclick="document.getElementById('loadProject').click()">📂 Abrir Proyecto</button>
+            <button onclick="downloadPDF()">📥 Descargar PDF</button>
+            <input type="file" id="loadProject" accept=".json" style="display: none;" onchange="loadProject(event)">
+        </div>
+    </div>
+
+    <div class="element-controls">
+        <div class="control-group">
+            <label>Tipo:</label>
+            <select id="elementType" onchange="updateControls()">
+                <option value="slugline">Encabezado de Escena</option>
+                <option value="action">Acción</option>
+                <option value="character">Personaje</option>
+                <option value="dialogue">Diálogo</option>
+                <option value="parenthetical">Paréntesis</option>
+                <option value="transition">Transición</option>
+            </select>
+        </div>
+
+        <div id="sluglineControls" class="control-group">
+            <select id="intExt">
+                <option value="INT.">INT.</option>
+                <option value="EXT.">EXT.</option>
+                <option value="INT./EXT.">INT./EXT.</option>
+            </select>
+            <input type="text" id="location" placeholder="LUGAR">
+            <select id="timeOfDay">
+                <option value="DÍA">DÍA</option>
+                <option value="NOCHE">NOCHE</option>
+                <option value="AMANECER">AMANECER</option>
+                <option value="ATARDECER">ATARDECER</option>
+                <option value="CONTINUO">CONTINUO</option>
+            </select>
+        </div>
+
+        <div id="transitionControls" class="control-group" style="display:none;">
+            <select id="transitionType">
+                <option value="CORTE A:">CORTE A:</option>
+                <option value="FUNDIDO A NEGRO:">FUNDIDO A NEGRO:</option>
+                <option value="FUNDIDO DESDE NEGRO:">FUNDIDO DESDE NEGRO:</option>
+                <option value="FUNDIDO A BLANCO:">FUNDIDO A BLANCO:</option>
+                <option value="DISOLVENCIA:">DISOLVENCIA:</option>
+                <option value="BARRIDO:">BARRIDO:</option>
+            </select>
+        </div>
+
+        <div id="textControls" class="control-group">
+            <input type="text" id="elementText" placeholder="Escribe aquí...">
+        </div>
+
+        <button onclick="addElement()" style="width: 100%; margin-top: 10px; background: #505050;">
+            ➕ Agregar Elemento
+        </button>
+    </div>
+
+    <div class="container">
+        <div class="page-number" id="pageNumber"></div>
+        <div id="editor" contenteditable="false"></div>
+    </div>
+
+    <div id="coverModal" class="modal">
+        <div class="modal-content">
+            <h2>Crear Portada</h2>
+            <input type="text" id="coverTitle" placeholder="Título del Guion">
+            <input type="text" id="coverAuthor" placeholder="Nombre del Guionista">
+            <input type="text" id="coverVersion" placeholder="Versión (ej: Primer Borrador)">
+            <input type="text" id="coverContact" placeholder="Información de Contacto">
+            <button onclick="createCover()" style="width: 100%; margin-top: 10px;">Crear</button>
+            <button onclick="closeCoverModal()" style="width: 100%; margin-top: 10px; background: #606060;">Cancelar</button>
+        </div>
+    </div>
+
+    <button class="scroll-to-top" id="scrollToTop" onclick="scrollToTop()">↑</button>
+
+    <script>
+        let screenplay = [];
+        let history = [];
+        let historyIndex = -1;
+        let sceneCounter = 1;
+        let currentPage = 1;
+        let coverData = null;
+
+        function updateControls() {
+            const type = document.getElementById('elementType').value;
+            document.getElementById('sluglineControls').style.display = type === 'slugline' ? 'flex' : 'none';
+            document.getElementById('transitionControls').style.display = type === 'transition' ? 'flex' : 'none';
+            document.getElementById('textControls').style.display = ['character', 'dialogue', 'action', 'parenthetical'].includes(type) ? 'flex' : 'none';
+        }
+
+        function addElement() {
+            const type = document.getElementById('elementType').value;
+            let element = { type };
+
+            if (type === 'slugline') {
+                const intExt = document.getElementById('intExt').value;
+                const location = document.getElementById('location').value.toUpperCase();
+                const timeOfDay = document.getElementById('timeOfDay').value;
+                
+                if (!location) {
+                    alert('Por favor ingresa un LUGAR');
+                    return;
+                }
+                
+                element.text = `${intExt} ${location} - ${timeOfDay}`;
+                element.sceneNumber = sceneCounter++;
+                document.getElementById('location').value = '';
+            } else if (type === 'transition') {
+                element.text = document.getElementById('transitionType').value;
+            } else {
+                const text = document.getElementById('elementText').value;
+                if (!text) {
+                    alert('Por favor ingresa texto');
+                    return;
+                }
+                element.text = type === 'character' ? text.toUpperCase() : text;
+                document.getElementById('elementText').value = '';
+            }
+
+            screenplay.push(element);
+            saveHistory();
+            renderScreenplay();
+            autoSave(); // Auto-guardar después de cada cambio
+        }
+
+        function renderScreenplay() {
+            const editor = document.getElementById('editor');
+            editor.innerHTML = '';
+
+            screenplay.forEach((element, index) => {
+                const div = document.createElement('div');
+                div.className = element.type;
+                
+                if (element.type === 'slugline') {
+                    div.innerHTML = `<span class="scene-number">${element.sceneNumber}.</span> ${element.text}`;
+                } else {
+                    div.textContent = element.text;
+                }
+                
+                editor.appendChild(div);
+            });
+
+            updatePageNumber();
+        }
+
+        function updatePageNumber() {
+            const pageNum = document.getElementById('pageNumber');
+            if (screenplay.length > 0) {
+                pageNum.textContent = `${currentPage}.`;
+            } else {
+                pageNum.textContent = '';
+            }
+        }
+
+        function saveHistory() {
+            history = history.slice(0, historyIndex + 1);
+            history.push(JSON.parse(JSON.stringify(screenplay)));
+            historyIndex++;
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                screenplay = JSON.parse(JSON.stringify(history[historyIndex]));
+                
+                // Recalcular el contador de escenas
+                sceneCounter = 1;
+                screenplay.forEach(element => {
+                    if (element.type === 'slugline' && element.sceneNumber) {
+                        sceneCounter = Math.max(sceneCounter, element.sceneNumber + 1);
+                    }
+                });
+                
+                renderScreenplay();
+            }
+        }
+
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                screenplay = JSON.parse(JSON.stringify(history[historyIndex]));
+                
+                // Recalcular el contador de escenas
+                sceneCounter = 1;
+                screenplay.forEach(element => {
+                    if (element.type === 'slugline' && element.sceneNumber) {
+                        sceneCounter = Math.max(sceneCounter, element.sceneNumber + 1);
+                    }
+                });
+                
+                renderScreenplay();
+            }
+        }
+
+        function showCoverModal() {
+            document.getElementById('coverModal').style.display = 'flex';
+        }
+
+        function closeCoverModal() {
+            document.getElementById('coverModal').style.display = 'none';
+        }
+
+        function createCover() {
+            coverData = {
+                title: document.getElementById('coverTitle').value,
+                author: document.getElementById('coverAuthor').value,
+                version: document.getElementById('coverVersion').value,
+                contact: document.getElementById('coverContact').value
+            };
+            closeCoverModal();
+            alert('Portada creada. Se incluirá al descargar el PDF.');
+            autoSave(); // Auto-guardar después de crear portada
+        }
+
+        function saveProject() {
+            const projectData = {
+                screenplay: screenplay,
+                sceneCounter: sceneCounter,
+                coverData: coverData,
+                currentPage: currentPage,
+                savedDate: new Date().toISOString()
+            };
+            
+            const dataStr = JSON.stringify(projectData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `guion_${Date.now()}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            alert('Proyecto guardado exitosamente');
+        }
+
+        function loadProject(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const projectData = JSON.parse(e.target.result);
+                    
+                    screenplay = projectData.screenplay || [];
+                    sceneCounter = projectData.sceneCounter || 1;
+                    coverData = projectData.coverData || null;
+                    currentPage = projectData.currentPage || 1;
+                    
+                    // Resetear historial
+                    history = [];
+                    historyIndex = -1;
+                    saveHistory();
+                    
+                    renderScreenplay();
+                    alert('Proyecto cargado exitosamente');
+                } catch (error) {
+                    alert('Error al cargar el proyecto. Asegúrate de que sea un archivo válido.');
+                    console.error(error);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Resetear el input para poder cargar el mismo archivo de nuevo
+            event.target.value = '';
+        }
+
+        function autoSave() {
+            const projectData = {
+                screenplay: screenplay,
+                sceneCounter: sceneCounter,
+                coverData: coverData,
+                currentPage: currentPage,
+                savedDate: new Date().toISOString()
+            };
+            
+            try {
+                localStorage.setItem('villoScreenplay_autosave', JSON.stringify(projectData));
+            } catch (e) {
+                console.log('Auto-guardado no disponible');
+            }
+        }
+
+        function loadAutoSave() {
+            try {
+                const saved = localStorage.getItem('villoScreenplay_autosave');
+                if (saved) {
+                    const projectData = JSON.parse(saved);
+                    const savedDate = new Date(projectData.savedDate);
+                    const confirm = window.confirm(
+                        `Se encontró un proyecto guardado automáticamente del ${savedDate.toLocaleString('es-MX')}. ¿Deseas cargarlo?`
+                    );
+                    
+                    if (confirm) {
+                        screenplay = projectData.screenplay || [];
+                        sceneCounter = projectData.sceneCounter || 1;
+                        coverData = projectData.coverData || null;
+                        currentPage = projectData.currentPage || 1;
+                        
+                        history = [];
+                        historyIndex = -1;
+                        saveHistory();
+                        renderScreenplay();
+                    }
+                }
+            } catch (e) {
+                console.log('No se pudo cargar el auto-guardado');
+            }
+        }
+
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                unit: 'in',
+                format: 'letter'
+            });
+
+            doc.setFont('courier');
+            doc.setFontSize(12);
+
+            let pageNum = 1;
+
+            // Agregar portada si existe
+            if (coverData && coverData.title) {
+                // Título
+                doc.setFontSize(14);
+                doc.text(coverData.title.toUpperCase(), 4.25, 3.5, { align: 'center' });
+                
+                // "Escrito por"
+                doc.setFontSize(12);
+                doc.text('Escrito por', 4.25, 5.0, { align: 'center' });
+                
+                // Nombre del autor
+                doc.text(coverData.author, 4.25, 5.5, { align: 'center' });
+                
+                // Versión (abajo izquierda)
+                if (coverData.version) {
+                    doc.text(coverData.version, 1.5, 9.0);
+                }
+                
+                // Contacto (abajo derecha)
+                if (coverData.contact) {
+                    doc.text(coverData.contact, 7.5, 9.0, { align: 'right' });
+                }
+                
+                doc.addPage();
+                pageNum++;
+            }
+
+            let y = 1.0;
+            const pageHeight = 10.0;
+
+            screenplay.forEach((element, index) => {
+                if (y > pageHeight) {
+                    doc.addPage();
+                    pageNum++;
+                    doc.text(`${pageNum}.`, 7.5, 0.5, { align: 'right' });
+                    y = 1.0;
+                }
+
+                doc.setFontSize(12);
+                
+                switch(element.type) {
+                    case 'slugline':
+                        if (y > 1.0) y += 0.17;
+                        doc.text(`${element.sceneNumber}. ${element.text}`, 1.5, y);
+                        y += 0.34; // Aumentar espacio después del encabezado
+                        break;
+                    case 'action':
+                        const actionLines = doc.splitTextToSize(element.text, 6.0);
+                        actionLines.forEach(line => {
+                            if (y > pageHeight) {
+                                doc.addPage();
+                                pageNum++;
+                                doc.text(`${pageNum}.`, 7.5, 0.5, { align: 'right' });
+                                y = 1.0;
+                            }
+                            doc.text(line, 1.5, y);
+                            y += 0.17;
+                        });
+                        y += 0.17; // Espacio después de la acción
+                        break;
+                    case 'character':
+                        if (y > pageHeight) {
+                            doc.addPage();
+                            pageNum++;
+                            doc.text(`${pageNum}.`, 7.5, 0.5, { align: 'right' });
+                            y = 1.0;
+                        }
+                        doc.text(element.text, 3.7, y);
+                        y += 0.17;
+                        break;
+                    case 'parenthetical':
+                        if (y > pageHeight) {
+                            doc.addPage();
+                            pageNum++;
+                            doc.text(`${pageNum}.`, 7.5, 0.5, { align: 'right' });
+                            y = 1.0;
+                        }
+                        doc.text(element.text, 3.1, y);
+                        y += 0.17;
+                        break;
+                    case 'dialogue':
+                        const dialogueLines = doc.splitTextToSize(element.text, 4.0);
+                        dialogueLines.forEach(line => {
+                            if (y > pageHeight) {
+                                doc.addPage();
+                                pageNum++;
+                                doc.text(`${pageNum}.`, 7.5, 0.5, { align: 'right' });
+                                y = 1.0;
+                            }
+                            doc.text(line, 2.5, y);
+                            y += 0.17;
+                        });
+                        y += 0.17; // Espacio después del diálogo
+                        break;
+                    case 'transition':
+                        if (y > pageHeight) {
+                            doc.addPage();
+                            pageNum++;
+                            doc.text(`${pageNum}.`, 7.5, 0.5, { align: 'right' });
+                            y = 1.0;
+                        }
+                        doc.text(element.text, 7.5, y, { align: 'right' });
+                        y += 0.34; // Espacio después de la transición
+                        break;
+                }
+            });
+
+            // Agregar número de página en la primera página del guion
+            if (pageNum >= 2 || screenplay.length > 0) {
+                doc.setPage(coverData ? 2 : 1);
+                doc.text('1.', 7.5, 0.5, { align: 'right' });
+            }
+
+            doc.save('guion.pdf');
+        }
+
+        // Inicialización
+        saveHistory();
+        updateControls();
+        loadAutoSave(); // Cargar auto-guardado al iniciar
+
+        // Mostrar/ocultar botón de scroll to top
+        window.addEventListener('scroll', function() {
+            const scrollBtn = document.getElementById('scrollToTop');
+            if (window.pageYOffset > 300) {
+                scrollBtn.classList.add('show');
+            } else {
+                scrollBtn.classList.remove('show');
+            }
+        });
+
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+    </script>
+</body>
+</html>
